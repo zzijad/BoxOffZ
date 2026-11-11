@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BoxOffZ</string>
+    <string name="admin_desc">Dozvoljava BoxOffZ-u da uspava box nakon gašenja TV-a.</string>
+</resources>
