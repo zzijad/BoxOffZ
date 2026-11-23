@@ -9,6 +9,8 @@ object Prefs {
     fun countdown(c: Context): Int = sp(c).getInt("secs", 5)
     fun sleepBox(c: Context): Boolean = sp(c).getBoolean("sleep_box", true)
 
+    fun saveIp(c: Context, ip: String) = sp(c).edit().putString("ip", ip).apply()
+
     fun save(c: Context, ip: String, secs: Int, sleepBox: Boolean) =
         sp(c).edit().putString("ip", ip).putInt("secs", secs).putBoolean("sleep_box", sleepBox).apply()
 }

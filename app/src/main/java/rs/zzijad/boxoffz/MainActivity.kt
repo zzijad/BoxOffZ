@@ -71,7 +71,16 @@ class MainActivity : Activity() {
         tvSub.text = "Gasim TV…"
         val ip = Prefs.tvIp(this)
         Thread {
-            val err = HisenseMqtt.sendKey(ip, "KEY_POWER")
+            var err = HisenseMqtt.sendKey(ip, "KEY_POWER")
+            if (err != null) {
+                // TV možda ima novi IP (DHCP) – potraži ga u mreži i zapamti
+                h.post { tvSub.text = "TV ne odgovara na $ip – tražim ga u mreži…" }
+                val found = TvFinder.find(ip)
+                if (found != null) {
+                    if (found != ip) Prefs.saveIp(this, found)
+                    err = HisenseMqtt.sendKey(found, "KEY_POWER")
+                }
+            }
             h.post { afterTv(err) }
         }.start()
     }

@@ -49,6 +49,7 @@ class SettingsActivity : Activity() {
 
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         row.add(button("Sačuvaj") { save(); finish() }, h = dp(52), side = 6)
+        row.add(button("Pronađi TV") { findTv() }, h = dp(52), side = 6)
         row.add(button("Test: ugasi TV") { save(); testTv() }, h = dp(52), side = 6)
         btnAdmin = button("") { toggleAdmin() }
         row.add(btnAdmin, h = dp(52), side = 6)
@@ -85,6 +86,26 @@ class SettingsActivity : Activity() {
     private fun save() {
         val secs = etSecs.text.toString().toIntOrNull()?.coerceIn(0, 60) ?: 5
         Prefs.save(this, etIp.text.toString().trim(), secs, cbSleep.isChecked)
+    }
+
+    private fun findTv() {
+        tvStatus.setTextColor(col(R.color.muted))
+        tvStatus.text = "Tražim TV u mreži…"
+        val old = etIp.text.toString().trim().ifEmpty { Prefs.tvIp(this) }
+        Thread {
+            val ip = TvFinder.find(old)
+            runOnUiThread {
+                if (ip != null) {
+                    etIp.setText(ip)
+                    Prefs.saveIp(this, ip)
+                    tvStatus.setTextColor(col(R.color.ok))
+                    tvStatus.text = "Pronađen TV: $ip ✓"
+                } else {
+                    tvStatus.setTextColor(col(R.color.error))
+                    tvStatus.text = "TV nije pronađen. Da li je uključen i na istoj mreži?"
+                }
+            }
+        }.start()
     }
 
     private fun testTv() {

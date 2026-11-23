@@ -52,26 +52,35 @@ object HisenseMqtt {
         }
     }
 
+    /** Da li je na hostu MQTT broker TV-a (uspešan CONNECT/CONNACK). Koristi se pri traženju TV-a u mreži. */
+    fun probe(host: String): Boolean =
+        runCatching { openPlain(host).use { s -> mqttConnect(s.getOutputStream(), s.getInputStream()) } }.isSuccess ||
+            runCatching { openTls(host).use { s -> mqttConnect(s.getOutputStream(), s.getInputStream()) } }.isSuccess
+
+    private fun mqttConnect(out: OutputStream, inp: InputStream) {
+        // CONNECT
+        val vh = ByteArrayOutputStream().apply {
+            str("MQTT")
+            write(4)            // protokol 3.1.1
+            write(0xC2)         // username + password + clean session
+            write(0); write(60) // keep-alive 60 s
+            str(CLIENT_ID); str(USER); str(PASS)
+        }.toByteArray()
+        packet(out, 0x10, vh)
+
+        // CONNACK: 20 02 00 rc
+        val ack = ByteArray(4)
+        readFully(inp, ack)
+        if ((ack[0].toInt() and 0xF0) != 0x20) error("TV nije odgovorio kao MQTT")
+        if (ack[3].toInt() != 0) error("TV je odbio vezu (kod ${ack[3]})")
+    }
+
     private fun send(socket: Socket, key: String) {
         socket.use { s ->
             val out = s.getOutputStream()
             val inp = s.getInputStream()
 
-            // CONNECT
-            val vh = ByteArrayOutputStream().apply {
-                str("MQTT")
-                write(4)            // protokol 3.1.1
-                write(0xC2)         // username + password + clean session
-                write(0); write(60) // keep-alive 60 s
-                str(CLIENT_ID); str(USER); str(PASS)
-            }.toByteArray()
-            packet(out, 0x10, vh)
-
-            // CONNACK: 20 02 00 rc
-            val ack = ByteArray(4)
-            readFully(inp, ack)
-            if ((ack[0].toInt() and 0xF0) != 0x20) error("TV nije odgovorio kao MQTT")
-            if (ack[3].toInt() != 0) error("TV je odbio vezu (kod ${ack[3]})")
+            mqttConnect(out, inp)
 
             // PUBLISH QoS 0
             val topic = "/remoteapp/tv/remote_service/$CLIENT_ID\$normal/actions/sendkey"
